@@ -53,13 +53,10 @@ public final class MyModelFactory implements Factory<Model> {
                 observerList.remove(observer);
                 // if the observer is not registered then throw exception
                 // else add the observer to our list
-
-
             }
 
             @Nonnull
             @Override
-
             //all currently registered observers of the model
             public ImmutableSet<Observer> getObservers() {
                 return ImmutableSet.copyOf(observerList);

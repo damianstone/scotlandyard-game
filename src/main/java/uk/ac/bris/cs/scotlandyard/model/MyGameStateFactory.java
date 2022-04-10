@@ -12,34 +12,67 @@ import uk.ac.bris.cs.scotlandyard.model.ScotlandYard.*;
 import java.util.*;
 
 /**
- * cw-model
+ * cw-modelto-do: clean code
  * Stage 1: Complete this class
  */
 
 // CLASS
 public final class MyGameStateFactory implements Factory<GameState> {
-    // BUILD METHOD
+
+    /**
+     * Creates an instance of GameState given the parameters required for a ScotlandYard game
+     *
+     * @param setup the game setup
+     * @param mrX MrX player
+     * @param detectives detective players
+     * @return an instance of GameState
+     */
     @Nonnull
     @Override
     public GameState build(GameSetup setup, Player mrX, ImmutableList<Player> detectives) {
-        // build return a new instance of GameState
         return new MyGameState(setup, ImmutableSet.of(Piece.MrX.MRX), ImmutableList.of(), mrX, detectives);
     }
 
-    // FACTORY TO CREATE THE SCOTLANDYARD GAME
+    /*
+    * Class that have all the values and methods to represent the scotlandyard game
+     */
     private final class MyGameState implements GameState {
+
+        // The game setup
         private GameSetup setup;
+
+        // The players that still has moves
         private ImmutableSet<Piece> remaining;
+
+        // The log entries of MrX travel log
         private ImmutableList<LogEntry> log;
+
+        // MrX player
         private Player mrX;
+
+        // List containing all the detectives
         private List<Player> detectives;
+
+        // Set containing all the moves (singles and doubles)
         private ImmutableSet<Move> moves;
+
+        // All the player involved in the game
         private ImmutableList<Player> everyone;
+
+        // The winner of the game
         private ImmutableSet<Piece> winner;
 
-        // constructor for my GameState
-        // constructor will be called by the build method of the outer class MyGameStateFactory
-        // why private?
+
+        /**
+         * MyGameState constructor
+         *
+         * @param setup the game setup
+         * @param remaining the pieces that can still move in the current round
+         * @param log MrX's travel log
+         * @param mrX MrX player
+         * @param detectives detective players
+         * @throws IllegalArgumentException if any of the arguments is not valid
+         */
         private MyGameState(
                 final GameSetup setup,
                 final ImmutableSet<Piece> remaining, // all the pieces that haven't moved yet
@@ -98,12 +131,18 @@ public final class MyGameStateFactory implements Factory<GameState> {
 
         //-------------------- Getters --------------------//
 
+        /**
+         * @return the current game setup
+         */
         @Nonnull
         @Override
         public GameSetup getSetup() {
             return setup;
         }
 
+        /**
+         * @return all the player pieces
+         */
         @Nonnull
         @Override
         public ImmutableSet<Piece> getPlayers() {
@@ -115,18 +154,23 @@ public final class MyGameStateFactory implements Factory<GameState> {
             return ImmutableSet.copyOf(allPieces);
         }
 
+        /**
+         * @param  detective piece
+         * @return the location of a given detective, and empty if the detective is part of te game
+         */
         @Nonnull
         @Override
         public Optional<Integer> getDetectiveLocation(Piece.Detective detective) {
-            // For all detectives, if Detective#piece == detective, then return the location in an Optional.of();
-            // otherwise, return Optional.empty();
             for (Player p : detectives) {
                 if (p.piece().equals(detective)) return Optional.of(p.location());
             }
             return Optional.empty();
-
         }
 
+        /**
+         * @param  piece
+         * @return the ticket board of a given player; empty if the player is not part of the game
+         */
         @Nonnull
         @Override
         public Optional<TicketBoard> getPlayerTickets(Piece piece) {
@@ -148,6 +192,9 @@ public final class MyGameStateFactory implements Factory<GameState> {
             return Optional.empty();
         }
 
+        /**
+         * @return the mrx travel log
+         */
         @Nonnull
         @Override
         public ImmutableList<LogEntry> getMrXTravelLog() {
@@ -155,10 +202,12 @@ public final class MyGameStateFactory implements Factory<GameState> {
         }
 
 
+        /**
+         * @return winner player
+         */
         @Nonnull
         @Override
         public ImmutableSet<Piece> getWinner() {
-            // use pieces list here because we don't use in any other method
             List<Piece> detectivePiecesList = new ArrayList<>();
             List<Integer> detectivesLocation = new ArrayList<>();
 
@@ -174,8 +223,7 @@ public final class MyGameStateFactory implements Factory<GameState> {
                 }
             }
 
-            // because obviously mrx win if detectives ran out of  move at any stage of the game
-            //if its mrX turn to move and there are no available moves then game over he loses
+            // if its mrX turn to move and there are no available moves then game over, and he loses
             if ((makeSingleMoves(setup, detectives, mrX, mrX.location()).isEmpty()
                     && makeDoubleMoves(setup, detectives, mrX, mrX.location(), log).isEmpty()
                     && remaining.contains(mrX.piece()))) {
@@ -185,14 +233,8 @@ public final class MyGameStateFactory implements Factory<GameState> {
             // No detective has more moves so mrx win
             if (noDetectivesHasMoves(detectives)) return ImmutableSet.of(mrX.piece());
 
-            // need comments
-            if (makeSingleMoves(setup, detectives, mrX, mrX.location()).isEmpty()
-                    && noDetectivesHasMoves(List.copyOf(getSet(remaining)))) {
-                return ImmutableSet.copyOf(detectivePiecesList);
-            }
 
-            // mrx manage to fill the log and no detectives could catch him
-            // mrx win
+            // mrx manage to fill the log and no detectives could catch him, so mrx win
             if (setup.moves.size() == getMrXTravelLog().size()
                     && remaining.contains(mrX.piece())) {
                 return ImmutableSet.of(mrX.piece());
@@ -201,11 +243,14 @@ public final class MyGameStateFactory implements Factory<GameState> {
             return ImmutableSet.of();
         }
 
+        /**
+         * @return a set of single and doubles moves from all the players
+         */
         @Nonnull
         @Override
         public ImmutableSet<Move> getAvailableMoves() {
-            // if winner return NOT empty
-            // when there is a winner
+
+            // if there is a winner
             if (!getWinner().isEmpty()) {
                 return ImmutableSet.of();
             }
@@ -226,19 +271,25 @@ public final class MyGameStateFactory implements Factory<GameState> {
             return ImmutableSet.copyOf(moves);
         }
 
+        /**
+         * Compute the next game state given a move from {@link #getAvailableMoves()}
+         *
+         * @param move
+         * @return the game state of which the given move has been made
+         * @throws IllegalArgumentException if the move was not a move from {@link #getAvailableMoves()}
+         */
         @Nonnull
         @Override
         public GameState advance(Move move) {
             if (!moves.contains(move)) throw new IllegalArgumentException("Illegal move: " + move);
 
-            // anon -> we can access to the list of all pieces (data from the constructur)
-            //  why and what they are? => for the presentation
             List<LogEntry> newLog = new ArrayList<>(log);
             List<Player> newDetectives = new ArrayList<>();
             List<Piece> oldRemaining = new ArrayList<>(remaining);
             List<Piece> newRemaining = new ArrayList<>();
             Player newMrx;
 
+            //anon -> we can access to the list of all pieces (data from the constructor)
             Visitor<Player> v = new Visitor<>() {
 
                 @Override
@@ -248,7 +299,6 @@ public final class MyGameStateFactory implements Factory<GameState> {
                     Player player = playerFromPiece(move.commencedBy());
 
                     // taking the tickets and move the player to the destination
-                    // we are creating a new player with the location and the tickets already taken
                     Player newPlayer = player.use(move.ticket).at(move.destination);
 
                     if (!player.isMrX()) {
@@ -256,7 +306,6 @@ public final class MyGameStateFactory implements Factory<GameState> {
                         mrX = mrX.give(move.ticket); // give the ticket to mrx from detectives
                     } else {
                         // check if in this round mrx has to reveal his moves
-                        // if moves[rounds] == true reveal mrx moves
                         if (setup.moves.get(log.size())) {
                             newLog.add(LogEntry.reveal(move.ticket, move.destination));
                         } else {
@@ -276,14 +325,8 @@ public final class MyGameStateFactory implements Factory<GameState> {
                     Player newPlayer = player.use(move.tickets());
                     newPlayer = newPlayer.at(move.destination2);
 
-                    if (!player.isMrX()) {
-                        // is a detective
-                        mrX = mrX.give(move.ticket1); // give the ticket to mrx from detectives
-                        mrX = mrX.give(move.ticket2); // give the ticket to mrx from detectives
 
-                    } else {
-
-                        // if moves[rounds] == true reveal mrx moves
+                        // if moves[rounds] == true, so mrx should reveal his moves
                         if (setup.moves.get(log.size())) {
                             newLog.add(LogEntry.reveal(move.ticket1, move.destination1));
                         } else {
@@ -300,20 +343,15 @@ public final class MyGameStateFactory implements Factory<GameState> {
                             newLog.add(LogEntry.hidden(move.ticket2));
                         }
 
-                    }
-
                     return newPlayer;
                 }
             };
 
             // mrx exam
             Player newPlayer = move.accept(v);
-            if (newPlayer == null) System.out.println("ERROR PLAYER NULL");
 
 
-            // only update newDetectives if newPlayer is a detective if a mrx do not create
-            // by default this loop will always be updated if is a detective
-            // change detectives list including the newPlayer
+            // only update newDetectives if newPlayer is a detective
             for (Player p : detectives) {
                 if (p.piece() == newPlayer.piece()) {
                     newDetectives.add(newPlayer);
@@ -330,9 +368,9 @@ public final class MyGameStateFactory implements Factory<GameState> {
             }
 
 
+            // check if the newPlayer is mrx
             if (newPlayer.isMrX()) {
                 newMrx = newPlayer;
-
             } else {
                 newMrx = mrX;
             }
@@ -361,11 +399,14 @@ public final class MyGameStateFactory implements Factory<GameState> {
             for(Piece p : remaining) {
                 Player player = playerFromPiece(p);
                 if(p.isMrX()) {
+                    /* The game is not over if MrX is cornered, but he can still escape
+                       can scape using a double move, or secret */
                     if(makeSingleMoves(setup, newDetectives, player, player.location()).isEmpty()
                             && !makeDoubleMoves(setup, newDetectives, newMrx, newMrx.location(), ImmutableList.copyOf(newLog)).isEmpty() ) {
                         newRemaining.add(newMrx.piece());
                     }
                 } else {
+                    // check if a detective still has moves
                     if(makeSingleMoves(setup, newDetectives, player, player.location()).isEmpty()) {
                         newRemaining.add(newMrx.piece());
                     }
@@ -386,7 +427,12 @@ public final class MyGameStateFactory implements Factory<GameState> {
 
         //-------------------- Auxiliary Functions --------------------//
 
-        // a  function to check if the detective have moves left or no!!!
+        /**
+         * Function to check if the detective have moves left or no
+         *
+         * @param detectives
+         * @return boolean
+         */
         public boolean noDetectivesHasMoves(List<Player> detectives) {
             for (Player p : detectives) {
                 if (!makeSingleMoves(setup, detectives, p, p.location()).isEmpty())
@@ -396,7 +442,12 @@ public final class MyGameStateFactory implements Factory<GameState> {
         }
 
 
-        // just a help function to  get corresponding player from its piece.
+        /**
+         * Function to get corresponding player from its piece
+         *
+         * @param piece
+         * @return a player or null if the piece is not belong to the game
+         */
         private Player playerFromPiece(Piece piece) {
             for (Player player : everyone) {
                 if (player.piece().equals(piece)) return player;
@@ -405,22 +456,16 @@ public final class MyGameStateFactory implements Factory<GameState> {
         }
 
 
-        // make a set of all players from a set of piece
-        public ImmutableSet<Player> getSet(ImmutableSet<Piece> pieces) {
-            Set<Player> PlayerSet = new HashSet<>();
-            for (Piece piece : pieces) {
-                PlayerSet.add(playerFromPiece(piece));
-            }
-            return ImmutableSet.copyOf(PlayerSet);
-        }
-
     }
 
 
-    //-------------------- Auxiliary Functions --------------------//
-
-
-    // MAKE SINGLE MOVES METHOD
+    /**
+     * @param setup the game setup
+     * @param detectives the detective players
+     * @param player the player
+     * @param source the source of the player
+     * @return all the available single moves for the player
+     */
     private static Set<SingleMove> makeSingleMoves(
             GameSetup setup,
             List<Player> detectives,
@@ -455,7 +500,14 @@ public final class MyGameStateFactory implements Factory<GameState> {
         return singleMoves;
     }
 
-    // MAKE DOUBLE MOVES METHOD
+    /**
+     * @param setup the game setup
+     * @param detectives the detective players
+     * @param player the player
+     * @param source the source of the player
+     * @param log MrX's travel log
+     * @return all the available double moves for the player
+     */
     private static Set<DoubleMove> makeDoubleMoves(
             GameSetup setup,
             List<Player> detectives,
@@ -466,7 +518,7 @@ public final class MyGameStateFactory implements Factory<GameState> {
         HashSet<DoubleMove> doubleMoves = new HashSet<>();
         Set<Integer> locations = new HashSet<>();
 
-        // store only locations
+        // store only locations from detectives
         for (Player d : detectives) locations.add(d.location());
 
         if ((player.has(Ticket.DOUBLE)) && (setup.moves.size() - log.size() >= 2)) {
@@ -556,7 +608,6 @@ public final class MyGameStateFactory implements Factory<GameState> {
         }
         return doubleMoves;
     }
-
 
 }
 

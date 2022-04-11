@@ -33,9 +33,6 @@ public final class MyGameStateFactory implements Factory<GameState> {
         return new MyGameState(setup, ImmutableSet.of(Piece.MrX.MRX), ImmutableList.of(), mrX, detectives);
     }
 
-    /*
-    * Class that have all the values and methods to represent the scotlandyard game
-     */
     private final class MyGameState implements GameState {
 
         // The game setup
@@ -290,6 +287,7 @@ public final class MyGameStateFactory implements Factory<GameState> {
             Player newMrx;
 
             //anon -> we can access to the list of all pieces (data from the constructor)
+            // Advance method use the visitor pattern to move the player through the table
             Visitor<Player> v = new Visitor<>() {
 
                 @Override
@@ -387,15 +385,6 @@ public final class MyGameStateFactory implements Factory<GameState> {
                 }
             }
 
-            // The game is not over if MrX is cornered but he can still escape
-            // can scape using a double move, or secret
-            // getavailable moves cant be empty
-
-            // STUCK DETECTIVES ->  avb moves empty
-            // if some detective are stuck -> mrx turn -> game continue
-            // what mean stuck?
-            // how I return something that makes the game just continue
-
             for(Piece p : remaining) {
                 Player player = playerFromPiece(p);
                 if(p.isMrX()) {
@@ -473,15 +462,23 @@ public final class MyGameStateFactory implements Factory<GameState> {
             int source) {
 
         HashSet<SingleMove> singleMoves = new HashSet<>();
+        Set<Integer> locations = new HashSet<>();
 
+        // store only locations from detectives
+        for (Player d : detectives) locations.add(d.location());
+
+        // map every node
         for (int destination : setup.graph.adjacentNodes(source)) {
-            boolean occupied = false;
-            for (Player p : detectives) {
-                if (p.location() == destination) occupied = true;
-            }
-            if (occupied) continue;
 
+            // Don't add in the collection of moves if the node is occupied by another player
+            if (locations.contains(destination)) continue;
+
+
+            // transport represent the transportation type (bus, taxi, etc)
+            // map the transportations needed for every node
             for (Transport t : setup.graph.edgeValueOrDefault(source, destination, ImmutableSet.of())) {
+
+                // find out if the player has the required tickets to transport to the node
                 if (player.has(t.requiredTicket())) {
                     SingleMove m = new SingleMove(
                             player.piece(),
@@ -492,10 +489,16 @@ public final class MyGameStateFactory implements Factory<GameState> {
                 }
             }
 
+            // mrX can still make a single moves having a secret ticket
             if (player.has(Ticket.SECRET)) {
-                SingleMove m = new SingleMove(player.piece(), source, Ticket.SECRET, destination);
+                SingleMove m = new SingleMove(
+                        player.piece(),
+                        source,
+                        Ticket.SECRET,
+                        destination);
                 singleMoves.add(m);
             }
+
         }
         return singleMoves;
     }
@@ -521,18 +524,19 @@ public final class MyGameStateFactory implements Factory<GameState> {
         // store only locations from detectives
         for (Player d : detectives) locations.add(d.location());
 
+        // 4 nested loops to check destination1, destination2 and transport1, transport2
         if ((player.has(Ticket.DOUBLE)) && (setup.moves.size() - log.size() >= 2)) {
-            //piece, source, ticket1, destination1, ticket2, destination2
             for (int destination1 : setup.graph.adjacentNodes(source)) {
                 if (locations.contains(destination1)) continue;
-                for (Transport t1 : Objects.requireNonNull(setup.graph.edgeValueOrDefault(source, destination1, ImmutableSet.of()))) {
+                for (Transport t1 : setup.graph.edgeValueOrDefault(source, destination1, ImmutableSet.of())) {
                     if (player.has(t1.requiredTicket())) {
                         for (int destination2 : setup.graph.adjacentNodes(destination1)) {
                             if (locations.contains(destination2)) continue;
-                            for (Transport t2 : Objects.requireNonNull(setup.graph.edgeValueOrDefault(destination1, destination2, ImmutableSet.of()))) {
-                                /* Checks if the required ticket for the first and for the
-									second move within the double move are the same */
+                            for (Transport t2 : setup.graph.edgeValueOrDefault(destination1, destination2, ImmutableSet.of())) {
+
+                                // check if the required tickets for first and second move are the same
                                 if (t2.requiredTicket() == t1.requiredTicket()) {
+                                    // player needs at least 2 tickets
                                     if (player.hasAtLeast(t2.requiredTicket(), 2)) {
                                         DoubleMove doubleMove = new DoubleMove(
                                                 player.piece(),
@@ -554,11 +558,12 @@ public final class MyGameStateFactory implements Factory<GameState> {
                                     doubleMoves.add(doubleMove);
                                 }
                             }
+
                             /* in double moves the player (mrx) can go to the first destination using a secret ticket
                             or go to the second destination using the secret ticket, and finally, he can use 2 secrets
                             to go to the first and second destination */
 
-                            // if the player has t1.tickets + secret ticket
+                            // if mrX has t1.tickets + secret ticket
                             if (player.has(Ticket.SECRET)) {
                                 DoubleMove doubleMove = new DoubleMove(
                                         player.piece(),
@@ -575,10 +580,9 @@ public final class MyGameStateFactory implements Factory<GameState> {
                 if (player.has(Ticket.SECRET)) {
                     for (int destination2 : setup.graph.adjacentNodes(destination1)) {
                         if (locations.contains(destination2)) continue;
-                        for (Transport t2 : Objects.requireNonNull(setup.graph.edgeValueOrDefault(destination1, destination2, ImmutableSet.of()))) {
-                            // if the player has the secret ticket + t2.tickets
-                            /* in this case mrx go to the first destination using the secret ticket
-                            and then to the second destination using a normal ticket */
+                        for (Transport t2 : setup.graph.edgeValueOrDefault(destination1, destination2, ImmutableSet.of())) {
+
+                            // if mrX has secret ticket + t2.tickets
                             if (player.has(t2.requiredTicket())) {
                                 DoubleMove doubleMove = new DoubleMove(
                                         player.piece(),
@@ -590,8 +594,8 @@ public final class MyGameStateFactory implements Factory<GameState> {
                                 doubleMoves.add(doubleMove);
                             }
                         }
-                        // if the player has directly 2 secret tickets
-                        // is this case mrx go the first and second destination using secrets tickets
+
+                        // if mrX has secret + secret
                         if (player.hasAtLeast(Ticket.SECRET, 2)) {
                             DoubleMove doubleMove = new DoubleMove(
                                     player.piece(),

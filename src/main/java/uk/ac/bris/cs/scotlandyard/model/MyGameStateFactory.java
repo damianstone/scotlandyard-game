@@ -16,7 +16,7 @@ import java.util.*;
  * Stage 1: Complete this class
  */
 
-// CLASS
+
 public final class MyGameStateFactory implements Factory<GameState> {
 
     /**

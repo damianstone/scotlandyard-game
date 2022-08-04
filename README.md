@@ -18,7 +18,7 @@ This class is a factory that implements the Factory<GameSatate> interface. This 
 
 For the base implementation of the moves that the players could make, we first had to create two functions that would return whether the player could make a single or doubles moves. Then these two functions would be called in the getAvailableMoves method to return a list of all the possible moves that each user can make.
 
-## Advance method 
+## Visitor Pattern & Advance method 
 
 The purpose of this method was to update the game state given a move. For this, we apply the Visitor Pattern through an anonymous class to take advantage of the variables in the scope of myGameState class. Using the visitor pattern, we implement the logic to move each player on the map.
 
